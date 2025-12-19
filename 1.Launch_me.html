@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FISO.PAC</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: url('Dont_remove.png') no-repeat center center fixed;
+            background-size: cover;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            height: 100vh;
+            color: #333;
+            overflow: hidden;
+        }
+
+        h1 {
+            position: absolute;
+            top: 20px;
+            width: 60%;
+            background: rgba(255, 255, 255, 0.8);
+            padding: 15px;
+            text-align: center;
+            font-size: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            max-width: 90%;
+            min-height: 40px;
+            margin-bottom: 20px;
+        }
+
+        #fileInput {
+            position: absolute;
+            top: 1px;
+            right: 0px;
+            padding: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1rem;
+            background: transparent;
+            border: none;
+        }
+
+        #barcodeInput {
+            margin-top: 130px;
+            padding: 12px;
+            font-size: 1.2rem;
+            border: 2px solid #333;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 5px;
+            width: 70%;
+            max-width: 400px;
+            box-sizing: border-box;
+            text-align: center;
+            transition: transform 0.3s ease-in-out;
+        }
+
+        #output {
+            margin-top: 30px;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 20px;
+            border-radius: 10px;
+            width: 80%;
+            max-width: 500px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            display: none;
+            text-align: center;
+            opacity: 0;
+            transform: scale(0.10);
+            transition: opacity 0.5s ease-in-out, transform 0.5s ease-in-out;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .info {
+            margin: 10px 0;
+            font-size: 1.5rem;
+        }
+
+        .info .label {
+            font-weight: bold;
+        }
+
+        #saveBtn {
+            margin-top: 20px;
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            display: none;
+        }
+
+        #saveBtn:hover {
+            background-color: #45a049;
+        }
+
+        .name-box {
+            font-size: 2rem;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .name-box div {
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>FISO Participant Attendance Checklist</h1>
+
+    <!-- Key input popup -->
+    <div id="keyPrompt" style="position: absolute; top: 150px; padding: 20px; background: rgba(255, 255, 255, 0.9); border-radius: 10px; text-align: center;">
+        <input type="file" id="keyFileInput" accept=".txt,.bat" placeholder="Upload Key File" autofocus>
+        <button onclick="validateKeyFile()">Submit Code</button>
+    </div>
+
+    <input type="file" id="fileInput" accept=".xlsx" style="display: none;">
+    <input type="text" id="barcodeInput" placeholder="Enter Or Type Code Here" autofocus style="display: none;">
+
+    <div id="output">
+        <div class="name-box" id="name">
+            <div id="thaiName">N/A</div>
+            <div id="englishName">N/A</div>
+        </div>
+        <div class="info"><span class="label">Category:</span> <span id="category">N/A</span></div>
+        <div class="info"><span class="label">Examiner ID:</span> <span id="examinerId">N/A</span></div>
+        <div class="info"><span class="label">Room:</span> <span id="Room">N/A</span></div>
+        <div class="info"><span class="label">Subject:</span> <span id="Subject">N/A</span></div>
+        <div class="info"><span class="label">School Name:</span> <span id="schoolName">N/A</span></div>
+    </div>
+    <button id="saveBtn">Save</button>
+
+    <script>
+        let excelData = [];
+        const githubKeyUrl = "https://raw.githubusercontent.com/Pfarkiss/International-Champions-In-Education-Key-System/refs/heads/Barcode-Reader-Key/Code";
+
+        function validateKeyFile() {
+            const fileInput = document.getElementById("keyFileInput");
+            const file = fileInput.files[0];
+            if (!file) {
+                alert("Please upload a code file.");
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const uploadedKey = e.target.result.trim();
+                fetch(githubKeyUrl)
+                    .then(response => response.text())
+                    .then(githubKey => {
+                        if (uploadedKey === githubKey.trim()) {
+                            alert("Code uploaded successfully! Upload your Excel file.");
+                            document.getElementById("keyPrompt").style.display = "none";
+                            document.getElementById("fileInput").style.display = "inline";
+                            document.getElementById("barcodeInput").style.display = "inline";
+                        } else {
+                            alert("Error");
+                        }
+                    })
+                    .catch(error => {
+                        alert("Error fetching the code from GitHub. Please try again.");
+                        console.error(error);
+                    });
+            };
+            reader.readAsText(file);
+        }
+
+
+        document.getElementById("fileInput").addEventListener("change", function(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: "array" });
+                const sheetName = workbook.SheetNames[0];
+                const sheet = workbook.Sheets[sheetName];
+                const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+                excelData = jsonData.slice(1); 
+                alert("Excel file loaded successfully! Start scanning or typing codes.");
+                document.getElementById("saveBtn").style.display = "inline-block";
+            };
+            reader.readAsArrayBuffer(file);
+        });
+
+        document.getElementById("barcodeInput").addEventListener("input", function(event) {
+            const value = event.target.value;
+            if (value.length === 14) {
+                processCode(value);
+                event.target.value = ""; 
+            }
+        });
+
+        function processCode(code) {
+            if (!excelData.length) {
+                alert("Please upload an Excel file first.");
+                return;
+            }
+
+            const cleanedCode = code.substring(0, 14);
+
+            const row = excelData.find(row => row[0] === cleanedCode);
+            if (row) {
+                displayParticipantInfo(row);
+
+                if (!row[8]) {
+                    row[8] = "ATTENDED";
+                    console.log(`Attendance marked for: ${row[1]} ${row[2]}`);
+                } else {
+                    alert(`Attendance already marked for: ${row[1]} ${row[2]}`);
+                }
+
+                setTimeout(function() {
+                    document.getElementById("barcodeInput").value = "";
+                }, 150);
+            } else {
+                alert("Invalid code! Please write your name down");
+            }
+        }
+
+        function displayParticipantInfo(row) {
+            const output = document.getElementById("output");
+            output.style.opacity = 0; 
+            output.style.transform = "scale(0.8)"; 
+            output.style.display = "block"; 
+
+            document.getElementById("thaiName").textContent = row[1] || "N/A";
+            document.getElementById("englishName").textContent = row[2] || "N/A";
+            document.getElementById("category").textContent = row[3] || "N/A";
+            document.getElementById("examinerId").textContent = row[5] || "N/A";
+            document.getElementById("Room").textContent = row[6] || "N/A";
+            document.getElementById("Subject").textContent = row[7] || "N/A";
+            document.getElementById("schoolName").textContent = row[4] || "N/A";
+
+            
+            setTimeout(function() {
+                output.style.opacity = 1; 
+                output.style.transform = "scale(1)"; 
+            }, 50); 
+        }
+
+        
+        document.getElementById("saveBtn").addEventListener("click", function() {
+            const ws = XLSX.utils.aoa_to_sheet([
+                ['QR Code ID', 'Thai Name', 'English Name', 'Category', 'School Name', 'Examiner ID', 'Room', 'Subject', 'Attendance']
+            ].concat(excelData));
+
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
+
+            const wbout = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+            const blob = new Blob([wbout], { type: "application/octet-stream" });
+
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = "FISO_Attendance_List.xlsx";
+            link.click();
+        });
+    </script>
+</body>
+</html>
